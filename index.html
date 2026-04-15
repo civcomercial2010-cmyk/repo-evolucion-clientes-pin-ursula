@@ -16,11 +16,13 @@
     .tab{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 14px;font-weight:700;background:#fff;color:#1c2e4a;cursor:pointer;transition:.15s ease;box-shadow:0 1px 3px rgba(0,0,0,.03)}
     .tab:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.08)}
     .tab.active{background:var(--acc);color:#fff;border-color:var(--acc);box-shadow:0 8px 18px rgba(31,95,255,.35)}
-    .filters{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:end}
+    .filters{display:grid;grid-template-columns:1.2fr 1fr 1.2fr;gap:10px;align-items:end}
     .checkbox-box{display:flex;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:9px 10px;min-height:40px;background:#fbfdff}
     .check{display:flex;align-items:center;gap:6px;font-size:13px;color:#2d3c55}
     .search{height:40px;border:1px solid var(--line);border-radius:12px;padding:0 12px;width:100%;background:#fbfdff}
     .search:focus{outline:none;border-color:#9fb8ff;box-shadow:0 0 0 3px rgba(31,95,255,.14)}
+    .search-row{display:flex;gap:8px}
+    .search-row button{height:40px;border:none;border-radius:12px;padding:0 14px;background:#1f5fff;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
     .mini{font-size:11px;color:var(--muted);margin-bottom:4px}
     .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
     .kpi{border:1px solid #d7e2f2;border-radius:14px;padding:12px 12px 10px;background:linear-gradient(180deg,#ffffff 0%,#f9fcff 100%);box-shadow:0 6px 16px rgba(17,34,68,0.06)}
@@ -49,16 +51,25 @@
     .arrow-down{color:var(--bad);font-weight:700}
     .th-sort{cursor:pointer;user-select:none}
     .hidden{display:none}
+    .mobile-only{display:none}
     .row-better{background:#effcf3}
     .row-worse{background:#fff1f2}
     .row-neutral{background:#f8fafc}
     @media (max-width:1100px){.filters{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}}
+    @media (max-width:768px){
+      body.mobile-mode .desktop-only{display:none !important}
+      body.mobile-mode .mobile-only{display:block}
+      body.mobile-mode .wrap{padding:10px}
+      body.mobile-mode .card{padding:12px;border-radius:12px}
+      body.mobile-mode h1{font-size:20px}
+      body.mobile-mode .table-wrap{max-height:none;overflow:visible}
+    }
   </style>
   <script src="./data/clientes_canonico.js"></script>
 </head>
 <body>
   <div id="app" class="wrap">
-    <section class="card">
+    <section class="card desktop-only">
       <h1>Dashboard evolución clientes Ursula</h1>
       <div class="tabs">
         <button id="tab-resumen" class="tab active">Resumen</button>
@@ -66,7 +77,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section id="filters-card" class="card desktop-only">
       <h2 style="margin-bottom:10px">Filtros globales</h2>
       <div class="filters">
         <div>
@@ -85,7 +96,10 @@
         </div>
         <div>
           <div class="mini">Busqueda</div>
-          <input id="q" class="search" placeholder="Codigo o nombre">
+          <div class="search-row">
+            <input id="q" class="search" placeholder="Codigo o nombre">
+            <button id="reset-filters" type="button">Reset</button>
+          </div>
         </div>
       </div>
     </section>
@@ -129,12 +143,22 @@
     </div>
 
     <div id="detalle-view" class="hidden">
-      <section class="card">
+      <section class="card desktop-only">
         <div class="section-title">
           <h2>Listado clientes</h2>
           <button id="toggle-all" class="action">Ver detalle</button>
         </div>
         <div id="clientes-wrap" class="table-wrap"><table id="clientes"></table></div>
+      </section>
+      <section class="card mobile-only">
+        <div class="section-title">
+          <h2>Listado clientes</h2>
+        </div>
+        <div class="search-row" style="margin-bottom:10px">
+          <input id="mobile-q" class="search" placeholder="Buscar cliente">
+          <button id="mobile-search" type="button">Buscar</button>
+        </div>
+        <div class="table-wrap unlimited"><table id="mobile-clientes"></table></div>
       </section>
     </div>
   </div>
@@ -155,7 +179,9 @@
       productSort:{ key:"importe", dir:"desc" },
       evolFilter:"todos",
       evolSort:{ key:"dYoy", dir:"desc" },
-      evolShowZeroZero:false
+      evolShowZeroZero:false,
+      isMobile: window.matchMedia("(max-width: 768px)").matches,
+      mobileQ:""
     };
 
     function parsePeriodoKey(k){
@@ -375,6 +401,19 @@
             return `<tr><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${r.grupo_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)} (${pct(r.dYoyPct)})</td>` : ""}<td>${estado}</td></tr>${detalle}`;
           }).join("")}
         </tbody>`;
+
+      const mobileRows = data.map(c => enrich(c, periods))
+        .filter(r => {
+          const q = state.mobileQ.trim().toLowerCase();
+          if (!q) return true;
+          return r.nombre_cliente.toLowerCase().includes(q) || r.codigo_cliente.toLowerCase().includes(q);
+        })
+        .sort((a,b)=>b.actual-a.actual);
+      document.getElementById("mobile-clientes").innerHTML = `
+        <thead><tr><th>Nombre</th><th>Venta ${currentLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}</tr></thead>
+        <tbody>
+          ${mobileRows.map(r => `<tr><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)} (${pct(r.dYoyPct)})</td>` : ""}</tr>`).join("")}
+        </tbody>`;
     }
 
     function syncStateAndRender(){
@@ -386,6 +425,7 @@
 
     function setView(view){
       state.activeView = view;
+      if (state.isMobile) view = "detalle";
       document.getElementById("resumen-view").classList.toggle("hidden", view !== "resumen");
       document.getElementById("detalle-view").classList.toggle("hidden", view !== "detalle");
       document.getElementById("tab-resumen").classList.toggle("active", view === "resumen");
@@ -415,13 +455,32 @@
 
     document.querySelectorAll(".f-grupo,.f-seg").forEach(x => x.addEventListener("change", syncStateAndRender));
     document.getElementById("q").addEventListener("input", syncStateAndRender);
+    document.getElementById("reset-filters").addEventListener("click", () => {
+      document.querySelectorAll(".f-grupo,.f-seg").forEach(x => { x.checked = true; });
+      document.getElementById("q").value = "";
+      state.grupos = new Set(["1","2"]);
+      state.segmentos = new Set([">1000","<=1000"]);
+      state.q = "";
+      render();
+    });
     document.getElementById("toggle-all").addEventListener("click", () => { state.showDetail = !state.showDetail; render(); });
     document.getElementById("evol-filter").addEventListener("change", (e) => { state.evolFilter = e.target.value; render(); });
     document.getElementById("evol-show-zerozero").addEventListener("change", (e) => { state.evolShowZeroZero = e.target.checked; render(); });
     document.getElementById("tab-resumen").addEventListener("click", () => setView("resumen"));
     document.getElementById("tab-detalle").addEventListener("click", () => setView("detalle"));
+    document.getElementById("mobile-search").addEventListener("click", () => {
+      state.mobileQ = document.getElementById("mobile-q").value.trim();
+      render();
+    });
+    document.getElementById("mobile-q").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        state.mobileQ = document.getElementById("mobile-q").value.trim();
+        render();
+      }
+    });
 
-    setView("resumen");
+    if (state.isMobile) document.body.classList.add("mobile-mode");
+    setView(state.isMobile ? "detalle" : "resumen");
     render();
   </script>
 </body>
