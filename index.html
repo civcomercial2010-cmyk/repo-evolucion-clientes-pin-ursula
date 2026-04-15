@@ -227,6 +227,14 @@
       return { current, prev, yoy };
     }
 
+    function normalizeText(value){
+      return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+    }
+
     function productClass(codeRaw){
       const code = (codeRaw || "").toUpperCase();
       if (code.includes("012PINTU")) return "product-paint";
@@ -414,9 +422,9 @@
 
       const mobileRows = data.map(c => enrich(c, periods))
         .filter(r => {
-          const q = state.mobileQ.trim().toLowerCase();
+          const q = normalizeText(state.mobileQ);
           if (!q) return true;
-          return r.nombre_cliente.toLowerCase().includes(q) || r.codigo_cliente.toLowerCase().includes(q);
+          return normalizeText(r.nombre_cliente).includes(q) || normalizeText(r.codigo_cliente).includes(q);
         })
         .sort((a,b)=>b.actual-a.actual);
       document.getElementById("mobile-clientes").innerHTML = `
@@ -430,10 +438,10 @@
                 <td colspan="${periods.yoy ? 4 : 3}">
                   <table>
                     <thead>
-                      <tr><th>Cod. producto</th><th>Cantidad</th><th>Descripcion</th><th>Importe</th></tr>
+                      <tr><th>Cantidad</th><th>Descripcion</th></tr>
                     </thead>
                     <tbody>
-                      ${detailRows.length ? detailRows.map(p => `<tr class="${productClass(p.codigo_producto)}"><td>${p.codigo_producto}</td><td>${p.cantidad ?? 0}</td><td>${p.descripcion}</td><td>${eur(p.importe)}</td></tr>`).join("") : '<tr><td colspan="4">Sin detalle de productos.</td></tr>'}
+                      ${detailRows.length ? detailRows.map(p => `<tr class="${productClass(p.codigo_producto)}"><td>${p.cantidad ?? 0}</td><td>${p.descripcion}</td></tr>`).join("") : '<tr><td colspan="2">Sin detalle de productos.</td></tr>'}
                     </tbody>
                   </table>
                 </td>
@@ -511,6 +519,10 @@
     document.getElementById("tab-resumen").addEventListener("click", () => setView("resumen"));
     document.getElementById("tab-detalle").addEventListener("click", () => setView("detalle"));
     document.getElementById("mobile-search").addEventListener("click", () => {
+      state.mobileQ = document.getElementById("mobile-q").value.trim();
+      render();
+    });
+    document.getElementById("mobile-q").addEventListener("input", () => {
       state.mobileQ = document.getElementById("mobile-q").value.trim();
       render();
     });
