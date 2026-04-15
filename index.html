@@ -316,6 +316,11 @@
     }
 
     function render(){
+      if (state.isMobile) {
+        state.activeView = "detalle";
+        document.getElementById("resumen-view").classList.add("hidden");
+        document.getElementById("detalle-view").classList.remove("hidden");
+      }
       const periods = computePeriods();
       const rows = filtered(periods).sort((a,b)=>b.actual-a.actual);
       const yoyLabel = periods.yoy ? formatPeriodoLabel(periods.yoy) : "trimestre YoY no disponible";
@@ -468,8 +473,12 @@
     }
 
     function setView(view){
-      state.activeView = view;
-      if (state.isMobile) view = "detalle";
+      if (state.isMobile) {
+        state.activeView = "detalle";
+        view = "detalle";
+      } else {
+        state.activeView = view;
+      }
       document.getElementById("resumen-view").classList.toggle("hidden", view !== "resumen");
       document.getElementById("detalle-view").classList.toggle("hidden", view !== "detalle");
       document.getElementById("tab-resumen").classList.toggle("active", view === "resumen");
