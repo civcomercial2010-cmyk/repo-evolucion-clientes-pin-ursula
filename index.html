@@ -185,7 +185,8 @@
       evolSort:{ key:"dYoy", dir:"desc" },
       evolShowZeroZero:false,
       isMobile:false,
-      mobileQ:""
+      mobileQ:"",
+      mobileExpanded:new Set()
     };
 
     function detectMobileMode(){
@@ -419,10 +420,36 @@
         })
         .sort((a,b)=>b.actual-a.actual);
       document.getElementById("mobile-clientes").innerHTML = `
-        <thead><tr><th>Nombre</th><th>Venta ${currentLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}</tr></thead>
+        <thead><tr><th>Nombre</th><th>Venta ${currentLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}<th>Detalle</th></tr></thead>
         <tbody>
-          ${mobileRows.map(r => `<tr><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)} (${pct(r.dYoyPct)})</td>` : ""}</tr>`).join("")}
+          ${mobileRows.map(r => {
+            const open = state.mobileExpanded.has(r.codigo_cliente);
+            const detailRows = sortProducts(r.consumos_1t26 || []);
+            const detail = open ? `
+              <tr class="detail-row">
+                <td colspan="${periods.yoy ? 4 : 3}">
+                  <table>
+                    <thead>
+                      <tr><th>Cod. producto</th><th>Cantidad</th><th>Descripcion</th><th>Importe</th></tr>
+                    </thead>
+                    <tbody>
+                      ${detailRows.length ? detailRows.map(p => `<tr class="${productClass(p.codigo_producto)}"><td>${p.codigo_producto}</td><td>${p.cantidad ?? 0}</td><td>${p.descripcion}</td><td>${eur(p.importe)}</td></tr>`).join("") : '<tr><td colspan="4">Sin detalle de productos.</td></tr>'}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>` : "";
+            return `<tr><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)} (${pct(r.dYoyPct)})</td>` : ""}<td><button type="button" class="action mobile-toggle" data-id="${r.codigo_cliente}" style="height:30px;padding:0 10px">${open ? "Ocultar" : "Ver detalle"}</button></td></tr>${detail}`;
+          }).join("")}
         </tbody>`;
+
+      document.querySelectorAll(".mobile-toggle").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          if (state.mobileExpanded.has(id)) state.mobileExpanded.delete(id);
+          else state.mobileExpanded.add(id);
+          render();
+        });
+      });
     }
 
     function syncStateAndRender(){
