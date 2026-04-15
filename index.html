@@ -56,13 +56,17 @@
     .row-worse{background:#fff1f2}
     .row-neutral{background:#f8fafc}
     @media (max-width:1100px){.filters{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}}
-    @media (max-width:768px){
-      body.mobile-mode .desktop-only{display:none !important}
-      body.mobile-mode .mobile-only{display:block}
-      body.mobile-mode .wrap{padding:10px}
-      body.mobile-mode .card{padding:12px;border-radius:12px}
-      body.mobile-mode h1{font-size:20px}
-      body.mobile-mode .table-wrap{max-height:none;overflow:visible}
+    @media (max-width:1024px){
+      .desktop-only{display:none !important}
+      #filters-card{display:none !important}
+      #resumen-view{display:none !important}
+      #detalle-view{display:block !important}
+      #detalle-view .desktop-only{display:none !important}
+      #detalle-view .mobile-only{display:block !important}
+      .wrap{padding:10px}
+      .card{padding:12px;border-radius:12px}
+      h1{font-size:20px}
+      .table-wrap{max-height:none;overflow:visible}
     }
   </style>
   <script src="./data/clientes_canonico.js"></script>
