@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Comercial Ursula</title>
+  <style>
+    :root { --bg:#f1f5fb; --card:#ffffff; --line:#dbe4f1; --txt:#122035; --muted:#5f6f8a; --ok:#0f8b4b; --bad:#c81f2f; --acc:#1f5fff; --purple:#6d28d9; --green:#0f8b4b; --shadow:0 8px 24px rgba(18,32,53,0.08); --shadow-soft:0 4px 12px rgba(18,32,53,0.06); }
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#f5f8ff 0%, #eef3fb 100%);font-family:Segoe UI,Arial,sans-serif;color:var(--txt)}
+    .wrap{max-width:1320px;margin:0 auto;padding:22px}
+    .wrap.full{max-width:100%;padding:16px 20px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow-soft)}
+    h1{margin:0 0 6px;font-size:24px;letter-spacing:.2px} h2{margin:0;font-size:17px;letter-spacing:.1px}
+    .sub{color:var(--muted);font-size:13px}
+    .tabs{display:flex;gap:8px;margin-top:8px}
+    .tab{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 14px;font-weight:700;background:#fff;color:#1c2e4a;cursor:pointer;transition:.15s ease;box-shadow:0 1px 3px rgba(0,0,0,.03)}
+    .tab:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.08)}
+    .tab.active{background:var(--acc);color:#fff;border-color:var(--acc);box-shadow:0 8px 18px rgba(31,95,255,.35)}
+    .filters{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:end}
+    .checkbox-box{display:flex;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:9px 10px;min-height:40px;background:#fbfdff}
+    .check{display:flex;align-items:center;gap:6px;font-size:13px;color:#2d3c55}
+    .search{height:40px;border:1px solid var(--line);border-radius:12px;padding:0 12px;width:100%;background:#fbfdff}
+    .search:focus{outline:none;border-color:#9fb8ff;box-shadow:0 0 0 3px rgba(31,95,255,.14)}
+    .mini{font-size:11px;color:var(--muted);margin-bottom:4px}
+    .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+    .kpi{border:1px solid #d7e2f2;border-radius:14px;padding:12px 12px 10px;background:linear-gradient(180deg,#ffffff 0%,#f9fcff 100%);box-shadow:0 6px 16px rgba(17,34,68,0.06)}
+    .kpi .l{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.25px}
+    .kpi .v{font-size:24px;font-weight:800;margin-top:4px;line-height:1.05}
+    .kpi .c{font-size:12px;margin-top:5px;font-weight:600}.ok{color:var(--ok)} .bad{color:var(--bad)}
+    .row{display:grid;grid-template-columns:1.2fr 1fr;gap:10px}
+    .inline-filters{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+    .inline-filters select{height:32px;border:1px solid var(--line);border-radius:8px;padding:0 8px}
+    .table-wrap{max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+    .table-wrap.unlimited{max-height:none;overflow:visible}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{padding:9px 8px;border-bottom:1px solid #e8eef7;text-align:left}
+    th{position:sticky;top:0;background:#f4f8ff;color:#5c6f90;font-size:11px;text-transform:uppercase;letter-spacing:.35px}
+    tbody tr:hover{background:#f7faff}
+    .pill{padding:2px 7px;border:1px solid var(--line);border-radius:999px;font-size:11px}
+    .risk{background:#fef2f2;color:#9f1d1d;border-color:#fecaca}
+    .section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    button.action{height:36px;border:none;border-radius:10px;padding:0 14px;font-weight:700;background:var(--acc);color:#fff;cursor:pointer;box-shadow:0 8px 16px rgba(31,95,255,.3)}
+    .detail-row{background:#fafcff}
+    .product-paint{font-weight:700;font-size:13px}
+    .product-red{color:#b91c1c}
+    .product-purple{color:var(--purple)}
+    .product-green{color:var(--green)}
+    .arrow-up{color:var(--ok);font-weight:700}
+    .arrow-down{color:var(--bad);font-weight:700}
+    .th-sort{cursor:pointer;user-select:none}
+    .hidden{display:none}
+    .row-better{background:#effcf3}
+    .row-worse{background:#fff1f2}
+    .row-neutral{background:#f8fafc}
+    @media (max-width:1100px){.filters{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}}
+  </style>
+  <script src="./data/clientes_canonico.js"></script>
+</head>
+<body>
+  <div id="app" class="wrap">
+    <section class="card">
+      <h1>Dashboard evolución clientes Ursula</h1>
+      <div class="tabs">
+        <button id="tab-resumen" class="tab active">Resumen</button>
+        <button id="tab-detalle" class="tab">Detalle</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin-bottom:10px">Filtros globales</h2>
+      <div class="filters">
+        <div>
+          <div class="mini">Grupo cliente</div>
+          <div class="checkbox-box">
+            <label class="check"><input type="checkbox" class="f-grupo" value="1" checked> Grupo 1</label>
+            <label class="check"><input type="checkbox" class="f-grupo" value="2" checked> Grupo 2</label>
+          </div>
+        </div>
+        <div>
+          <div class="mini">Segmento valor</div>
+          <div class="checkbox-box">
+            <label class="check"><input type="checkbox" class="f-seg" value=">1000" checked> >1000</label>
+            <label class="check"><input type="checkbox" class="f-seg" value="<=1000" checked> <=1000</label>
+          </div>
+        </div>
+        <div>
+          <div class="mini">Busqueda</div>
+          <input id="q" class="search" placeholder="Codigo o nombre">
+        </div>
+      </div>
+    </section>
+
+    <div id="resumen-view">
+      <section class="card">
+        <h2 id="resumen-title" style="margin-bottom:10px">Resumen ejecutivo</h2>
+        <div id="kpis" class="kpi-grid"></div>
+        <div id="control-total" class="mini" style="margin-top:8px"></div>
+      </section>
+
+      <section class="card row">
+        <div>
+          <h2 style="margin-bottom:10px">Movimientos clave de cartera</h2>
+          <div class="table-wrap"><table id="tops"></table></div>
+        </div>
+        <div>
+          <h2 id="risk-title" style="margin-bottom:10px">Clientes en riesgo</h2>
+          <div class="table-wrap"><table id="riesgo"></table></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2 id="evolucion-title">Evolución visual clientes</h2>
+        </div>
+        <div class="inline-filters">
+          <span class="mini" style="margin:0">Filtro evolución:</span>
+          <select id="evol-filter">
+            <option value="todos">Todos</option>
+            <option value="suben">Suben</option>
+            <option value="bajan">Bajan</option>
+          </select>
+          <label class="check" style="margin-left:6px">
+            <input type="checkbox" id="evol-show-zerozero">
+            Mostrar 0 - 0
+          </label>
+        </div>
+        <div class="table-wrap unlimited"><table id="evolucion-clientes"></table></div>
+      </section>
+    </div>
+
+    <div id="detalle-view" class="hidden">
+      <section class="card">
+        <div class="section-title">
+          <h2>Listado clientes</h2>
+          <button id="toggle-all" class="action">Ver detalle</button>
+        </div>
+        <div id="clientes-wrap" class="table-wrap"><table id="clientes"></table></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const data = (window.DASHBOARD_DATA && window.DASHBOARD_DATA.clientes) ? window.DASHBOARD_DATA.clientes : [];
+    const meta = (window.DASHBOARD_DATA && window.DASHBOARD_DATA.metadata) ? window.DASHBOARD_DATA.metadata : {};
+    const eur = v => new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2}).format(v || 0);
+    const pct = v => (v===null || Number.isNaN(v)) ? "N/D" : `${(v*100).toFixed(1)}%`;
+    const cls = v => v > 0 ? "ok" : v < 0 ? "bad" : "";
+
+    const state = {
+      grupos:new Set(["1","2"]),
+      segmentos:new Set([">1000","<=1000"]),
+      q:"",
+      showDetail:false,
+      activeView:"resumen",
+      productSort:{ key:"importe", dir:"desc" },
+      evolFilter:"todos",
+      evolSort:{ key:"dYoy", dir:"desc" },
+      evolShowZeroZero:false
+    };
+
+    function parsePeriodoKey(k){
+      const m = /^([1-4])T(\d{2})$/.exec(k || "");
+      if (!m) return null;
+      return { t:Number(m[1]), y:Number(m[2]), score:Number(m[2]) * 10 + Number(m[1]) };
+    }
+
+    function formatPeriodoLabel(k){
+      if (!k) return "N/D";
+      const p = parsePeriodoKey(k);
+      return p ? `${p.t}T${p.y}` : k;
+    }
+
+    function computePeriods(){
+      const keys = new Set();
+      data.forEach(c => Object.keys(c.ventas || {}).forEach(k => keys.add(k)));
+      const ordered = Array.from(keys)
+        .map(k => ({ key:k, parsed:parsePeriodoKey(k) }))
+        .filter(x => x.parsed)
+        .sort((a,b) => a.parsed.score - b.parsed.score)
+        .map(x => x.key);
+      const current = ordered[ordered.length - 1] || "1T26";
+      const currParsed = parsePeriodoKey(current);
+      const prev = ordered[ordered.length - 2] || current;
+      let yoy = null;
+      if (currParsed) {
+        const target = `${currParsed.t}T${String(currParsed.y - 1).padStart(2, "0")}`;
+        yoy = ordered.includes(target) ? target : null;
+      }
+      return { current, prev, yoy };
+    }
+
+    function productClass(codeRaw){
+      const code = (codeRaw || "").toUpperCase();
+      if (code.includes("012PINTU")) return "product-paint";
+      if (code.startsWith("011") || code.startsWith("120") || code.startsWith("568")) return "product-red";
+      if (code.includes("012BASE")) return "product-purple";
+      if (code.includes("012ESMA")) return "product-green";
+      return "";
+    }
+
+    function sortProducts(items){
+      const key = state.productSort.key;
+      const factor = state.productSort.dir === "asc" ? 1 : -1;
+      return [...items].sort((a,b) => {
+        const av = a[key] ?? "";
+        const bv = b[key] ?? "";
+        if (typeof av === "number" && typeof bv === "number") return (av - bv) * factor;
+        return String(av).localeCompare(String(bv), "es") * factor;
+      });
+    }
+
+    function sortEvolutionRows(items){
+      const key = state.evolSort.key;
+      const factor = state.evolSort.dir === "asc" ? 1 : -1;
+      return [...items].sort((a,b) => {
+        let av = a[key];
+        let bv = b[key];
+        if (key === "tendencia") {
+          const rank = { "Mejora": 3, "Igual": 2, "Empeora": 1 };
+          av = rank[a.dYoy > 0 ? "Mejora" : a.dYoy < 0 ? "Empeora" : "Igual"];
+          bv = rank[b.dYoy > 0 ? "Mejora" : b.dYoy < 0 ? "Empeora" : "Igual"];
+        }
+        if (typeof av === "number" && typeof bv === "number") return (av - bv) * factor;
+        return String(av ?? "").localeCompare(String(bv ?? ""), "es") * factor;
+      });
+    }
+
+    function enrich(c, periods){
+      const actual = c.ventas[periods.current] || 0;
+      const prev = c.ventas[periods.prev] || 0;
+      const yoy = periods.yoy ? (c.ventas[periods.yoy] || 0) : 0;
+      const seg = actual > 1000 ? ">1000" : "<=1000";
+      const activo = actual > 0;
+      const nuevo = actual > 0 && prev === 0;
+      const riesgo = (prev > 0 && ((actual - prev) / prev) <= -0.30) || (prev > 1000 && actual <= 1000 && actual > 0);
+      return {
+        ...c, actual, prev, yoy, seg, activo, nuevo, riesgo,
+        dPrev: actual - prev, dYoy: actual - yoy, dYoyPct: yoy > 0 ? (actual - yoy) / yoy : null
+      };
+    }
+
+    function filtered(periods){
+      return data.map(c => enrich(c, periods)).filter(r => {
+        if (!state.grupos.has(r.grupo_cliente)) return false;
+        if (!state.segmentos.has(r.seg)) return false;
+        if (state.q) {
+          const t = state.q.toLowerCase();
+          if (!(r.codigo_cliente.toLowerCase().includes(t) || r.nombre_cliente.toLowerCase().includes(t))) return false;
+        }
+        return true;
+      });
+    }
+
+    function kpi(label, actualTxt, compTxt, delta){
+      return `<div class="kpi"><div class="l">${label}</div><div class="v">${actualTxt}</div><div class="c ${cls(delta)}">${compTxt}</div></div>`;
+    }
+
+    function movementArrow(v){
+      return v >= 0 ? `<span class="arrow-up">▲ Sube</span>` : `<span class="arrow-down">▼ Baja</span>`;
+    }
+
+    function sortIndicator(key){
+      if (state.productSort.key !== key) return "";
+      return state.productSort.dir === "asc" ? " ↑" : " ↓";
+    }
+
+    function sortEvolIndicator(key){
+      if (state.evolSort.key !== key) return "";
+      return state.evolSort.dir === "asc" ? " ↑" : " ↓";
+    }
+
+    function render(){
+      const periods = computePeriods();
+      const rows = filtered(periods).sort((a,b)=>b.actual-a.actual);
+      const yoyLabel = periods.yoy ? formatPeriodoLabel(periods.yoy) : "trimestre YoY no disponible";
+      const prevLabel = formatPeriodoLabel(periods.prev);
+      const currentLabel = formatPeriodoLabel(periods.current);
+
+      document.getElementById("resumen-title").textContent = `Resumen ejecutivo (${currentLabel}${periods.yoy ? ` vs ${yoyLabel}` : ""})`;
+      document.getElementById("risk-title").textContent = `Clientes en riesgo (vs ${prevLabel})`;
+      document.getElementById("evolucion-title").textContent = `Evolución visual clientes (${currentLabel}${periods.yoy ? ` vs ${yoyLabel}` : ""})`;
+
+      const fact = rows.reduce((a,r)=>a+r.actual,0);
+      const factYoy = rows.reduce((a,r)=>a+r.yoy,0);
+      const activos = rows.filter(r=>r.activo).length;
+      const activosYoy = rows.filter(r=>r.yoy>0).length;
+      const nuevos = rows.filter(r=>r.nuevo).length;
+      const nuevosYoy = rows.filter(r=>r.yoy>0 && r.prev===0).length;
+      const totalClientes = rows.length;
+      const totalClientesYoy = data.map(c => enrich(c, periods)).filter(r=>r.yoy>=0).length;
+      const gt = rows.filter(r=>r.actual>1000).length;
+      const gtYoy = rows.filter(r=>r.yoy>1000).length;
+      const riesgo = rows.filter(r=>r.riesgo).length;
+      const riesgoPrev = rows.filter(r=>r.prev>0 && r.actual===0).length;
+
+      document.getElementById("kpis").innerHTML = [
+        kpi("Facturacion", eur(fact), periods.yoy ? `vs ${yoyLabel}: ${eur(factYoy)} (${pct(factYoy>0 ? (fact-factYoy)/factYoy : null)})` : "Sin comparativa YoY", fact-factYoy),
+        kpi("Clientes activos", activos, periods.yoy ? `vs ${yoyLabel}: ${activosYoy}` : "Sin comparativa YoY", activos-activosYoy),
+        kpi("Clientes nuevos", nuevos, periods.yoy ? `vs ${yoyLabel}: ${nuevosYoy}` : "Sin comparativa YoY", nuevos-nuevosYoy),
+        kpi("Clientes totales", totalClientes, periods.yoy ? `vs ${yoyLabel}: ${totalClientesYoy}` : "Sin comparativa YoY", totalClientes-totalClientesYoy),
+        kpi("Clientes >1000", gt, periods.yoy ? `vs ${yoyLabel}: ${gtYoy}` : "Sin comparativa YoY", gt-gtYoy),
+        kpi("Clientes riesgo", riesgo, `vs ${prevLabel}: ${riesgoPrev}`, -(riesgo-riesgoPrev))
+      ].join("");
+
+      const baseNoFiltro = state.grupos.size===2 && state.segmentos.size===2 && !state.q;
+      document.getElementById("control-total").innerHTML = baseNoFiltro && meta.total_1t26_hoja && periods.current === "1T26"
+        ? `Control ${currentLabel} origen: <b>${eur(meta.total_1t26_hoja)}</b> | calculado: <b>${eur(fact)}</b> | diferencia: <b>${eur(fact-meta.total_1t26_hoja)}</b>`
+        : `Control del trimestre actual: ${currentLabel}`;
+
+      const up = [...rows].sort((a,b)=>b.dPrev-a.dPrev).slice(0,10);
+      const upCodes = new Set(up.map(r => r.codigo_cliente));
+      const down = [...rows]
+        .sort((a,b)=>a.dPrev-b.dPrev)
+        .filter(r => !upCodes.has(r.codigo_cliente))
+        .slice(0,10);
+      document.getElementById("tops").innerHTML = `
+        <thead><tr><th>Movimiento</th><th>Codigo</th><th>Cliente</th><th>Venta ${currentLabel}</th><th>vs ${prevLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}</tr></thead>
+        <tbody>
+          ${up.map(r=>`<tr><td>${movementArrow(r.dPrev)}</td><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td class="${cls(r.dPrev)}">${eur(r.dPrev)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)}</td>` : ""}</tr>`).join("")}
+          ${down.map(r=>`<tr><td>${movementArrow(r.dPrev)}</td><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td class="${cls(r.dPrev)}">${eur(r.dPrev)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)}</td>` : ""}</tr>`).join("")}
+        </tbody>`;
+
+      const riskRows = rows.filter(r=>r.riesgo).sort((a,b)=>a.dPrev-b.dPrev).slice(0,80);
+      document.getElementById("riesgo").innerHTML = `
+        <thead><tr><th>Codigo</th><th>Cliente</th><th>Venta ${currentLabel}</th><th>vs ${prevLabel}</th></tr></thead>
+        <tbody>${riskRows.length ? riskRows.map(r=>`<tr><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td class="${cls(r.dPrev)}">${eur(r.dPrev)}</td></tr>`).join("") : '<tr><td colspan="4">Sin clientes en riesgo.</td></tr>'}</tbody>`;
+
+      let evolRows = [...rows];
+      if (!state.evolShowZeroZero) evolRows = evolRows.filter(r => !(r.actual === 0 && r.yoy === 0));
+      if (state.evolFilter === "suben") evolRows = evolRows.filter(r => r.dYoy > 0);
+      if (state.evolFilter === "bajan") evolRows = evolRows.filter(r => r.dYoy < 0);
+      evolRows = sortEvolutionRows(evolRows);
+      document.getElementById("evolucion-clientes").innerHTML = `
+        <thead>
+          <tr>
+            <th class="th-sort" onclick="window.sortEvolBy('codigo_cliente')">Codigo${sortEvolIndicator("codigo_cliente")}</th>
+            <th class="th-sort" onclick="window.sortEvolBy('nombre_cliente')">Cliente${sortEvolIndicator("nombre_cliente")}</th>
+            <th class="th-sort" onclick="window.sortEvolBy('actual')">Venta ${currentLabel}${sortEvolIndicator("actual")}</th>
+            ${periods.yoy ? `<th class="th-sort" onclick="window.sortEvolBy('yoy')">Venta ${yoyLabel}${sortEvolIndicator("yoy")}</th><th class="th-sort" onclick="window.sortEvolBy('dYoy')">Variación${sortEvolIndicator("dYoy")}</th><th class="th-sort" onclick="window.sortEvolBy('dYoyPct')">Variación %${sortEvolIndicator("dYoyPct")}</th>` : ""}
+            <th class="th-sort" onclick="window.sortEvolBy('tendencia')">Tendencia${sortEvolIndicator("tendencia")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${evolRows.length ? evolRows.map(r => {
+            const trend = r.dYoy > 0 ? "Mejora" : r.dYoy < 0 ? "Empeora" : "Igual";
+            const rowClass = r.dYoy > 0 ? "row-better" : r.dYoy < 0 ? "row-worse" : "row-neutral";
+            return `<tr class="${rowClass}"><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td>${eur(r.yoy)}</td><td class="${cls(r.dYoy)}">${eur(r.dYoy)}</td><td class="${cls(r.dYoy)}">${pct(r.dYoyPct)}</td>` : ""}<td><b>${trend}</b></td></tr>`;
+          }).join("") : `<tr><td colspan="${periods.yoy ? 7 : 4}">Sin clientes para el filtro seleccionado.</td></tr>`}
+        </tbody>`;
+
+      document.getElementById("toggle-all").textContent = state.showDetail ? "Ocultar detalle" : "Ver detalle";
+      const wrap = document.getElementById("clientes-wrap");
+      wrap.classList.toggle("unlimited", state.showDetail);
+      document.getElementById("clientes").innerHTML = `
+        <thead><tr><th>Codigo</th><th>Nombre</th><th>Grupo</th><th>Venta ${currentLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}<th>Estado</th></tr></thead>
+        <tbody>
+          ${rows.map(r => {
+            const estado = r.activo ? (r.nuevo ? "nuevo" : "activo") : "sin consumo";
+            const detailRows = sortProducts(r.consumos_1t26 || []);
+            const detalle = state.showDetail ? `
+              <tr class="detail-row"><td colspan="${periods.yoy ? 6 : 5}">
+                <div class="mini" style="margin-bottom:6px">Detalle consumo ${currentLabel} (${detailRows.length} lineas)</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th class="th-sort" onclick="window.sortProductBy('codigo_producto')">Cod. producto${sortIndicator("codigo_producto")}</th>
+                      <th class="th-sort" onclick="window.sortProductBy('cantidad')">Cantidad${sortIndicator("cantidad")}</th>
+                      <th class="th-sort" onclick="window.sortProductBy('descripcion')">Descripcion${sortIndicator("descripcion")}</th>
+                      <th class="th-sort" onclick="window.sortProductBy('importe')">Importe${sortIndicator("importe")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>${detailRows.length ? detailRows.map(p=>`<tr class="${productClass(p.codigo_producto)}"><td>${p.codigo_producto}</td><td>${p.cantidad ?? 0}</td><td>${p.descripcion}</td><td>${eur(p.importe)}</td></tr>`).join("") : '<tr><td colspan="4">Sin detalle de lineas en origen.</td></tr>'}</tbody>
+                </table>
+              </td></tr>` : "";
+            return `<tr><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${r.grupo_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)} (${pct(r.dYoyPct)})</td>` : ""}<td>${estado}</td></tr>${detalle}`;
+          }).join("")}
+        </tbody>`;
+    }
+
+    function syncStateAndRender(){
+      state.grupos = new Set(Array.from(document.querySelectorAll(".f-grupo:checked")).map(x=>x.value));
+      state.segmentos = new Set(Array.from(document.querySelectorAll(".f-seg:checked")).map(x=>x.value));
+      state.q = document.getElementById("q").value.trim();
+      render();
+    }
+
+    function setView(view){
+      state.activeView = view;
+      document.getElementById("resumen-view").classList.toggle("hidden", view !== "resumen");
+      document.getElementById("detalle-view").classList.toggle("hidden", view !== "detalle");
+      document.getElementById("tab-resumen").classList.toggle("active", view === "resumen");
+      document.getElementById("tab-detalle").classList.toggle("active", view === "detalle");
+      document.getElementById("app").classList.toggle("full", view === "detalle");
+    }
+
+    window.sortProductBy = function(key){
+      if (state.productSort.key === key) {
+        state.productSort.dir = state.productSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        state.productSort.key = key;
+        state.productSort.dir = key === "importe" || key === "cantidad" ? "desc" : "asc";
+      }
+      render();
+    };
+
+    window.sortEvolBy = function(key){
+      if (state.evolSort.key === key) {
+        state.evolSort.dir = state.evolSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        state.evolSort.key = key;
+        state.evolSort.dir = (key === "actual" || key === "yoy" || key === "dYoy" || key === "dYoyPct") ? "desc" : "asc";
+      }
+      render();
+    };
+
+    document.querySelectorAll(".f-grupo,.f-seg").forEach(x => x.addEventListener("change", syncStateAndRender));
+    document.getElementById("q").addEventListener("input", syncStateAndRender);
+    document.getElementById("toggle-all").addEventListener("click", () => { state.showDetail = !state.showDetail; render(); });
+    document.getElementById("evol-filter").addEventListener("change", (e) => { state.evolFilter = e.target.value; render(); });
+    document.getElementById("evol-show-zerozero").addEventListener("change", (e) => { state.evolShowZeroZero = e.target.checked; render(); });
+    document.getElementById("tab-resumen").addEventListener("click", () => setView("resumen"));
+    document.getElementById("tab-detalle").addEventListener("click", () => setView("detalle"));
+
+    setView("resumen");
+    render();
+  </script>
+</body>
+</html>
