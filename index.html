@@ -148,7 +148,7 @@
           <h2>Listado clientes</h2>
           <button id="toggle-all" class="action">Ver detalle</button>
         </div>
-        <div id="clientes-wrap" class="table-wrap"><table id="clientes"></table></div>
+        <div id="clientes-wrap" class="table-wrap unlimited"><table id="clientes"></table></div>
       </section>
       <section class="card mobile-only">
         <div class="section-title">
@@ -180,9 +180,16 @@
       evolFilter:"todos",
       evolSort:{ key:"dYoy", dir:"desc" },
       evolShowZeroZero:false,
-      isMobile: window.matchMedia("(max-width: 768px)").matches,
+      isMobile:false,
       mobileQ:""
     };
+
+    function detectMobileMode(){
+      const smallViewport = window.matchMedia("(max-width: 1024px)").matches;
+      const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+      const touchCapable = ("ontouchstart" in window) || (navigator.maxTouchPoints > 0);
+      return smallViewport && (coarsePointer || touchCapable);
+    }
 
     function parsePeriodoKey(k){
       const m = /^([1-4])T(\d{2})$/.exec(k || "");
@@ -375,8 +382,6 @@
         </tbody>`;
 
       document.getElementById("toggle-all").textContent = state.showDetail ? "Ocultar detalle" : "Ver detalle";
-      const wrap = document.getElementById("clientes-wrap");
-      wrap.classList.toggle("unlimited", state.showDetail);
       document.getElementById("clientes").innerHTML = `
         <thead><tr><th>Codigo</th><th>Nombre</th><th>Grupo</th><th>Venta ${currentLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}<th>Estado</th></tr></thead>
         <tbody>
@@ -453,6 +458,12 @@
       render();
     };
 
+    function applyMobileMode(){
+      state.isMobile = detectMobileMode();
+      document.body.classList.toggle("mobile-mode", state.isMobile);
+      setView(state.isMobile ? "detalle" : state.activeView);
+    }
+
     document.querySelectorAll(".f-grupo,.f-seg").forEach(x => x.addEventListener("change", syncStateAndRender));
     document.getElementById("q").addEventListener("input", syncStateAndRender);
     document.getElementById("reset-filters").addEventListener("click", () => {
@@ -479,7 +490,9 @@
       }
     });
 
-    if (state.isMobile) document.body.classList.add("mobile-mode");
+    applyMobileMode();
+    window.addEventListener("resize", applyMobileMode);
+    window.addEventListener("orientationchange", applyMobileMode);
     setView(state.isMobile ? "detalle" : "resumen");
     render();
   </script>
