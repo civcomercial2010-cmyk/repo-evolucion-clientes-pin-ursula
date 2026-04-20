@@ -32,6 +32,7 @@
     .row{display:grid;grid-template-columns:1.2fr 1fr;gap:10px}
     .inline-filters{display:flex;gap:8px;align-items:center;margin-bottom:10px}
     .inline-filters select{height:32px;border:1px solid var(--line);border-radius:8px;padding:0 8px}
+    .inline-filters .search{height:32px;max-width:260px;border-radius:8px}
     .table-wrap{max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
     .table-wrap.unlimited{max-height:none;overflow:visible}
     table{width:100%;border-collapse:collapse;font-size:12px}
@@ -41,8 +42,10 @@
     .pill{padding:2px 7px;border:1px solid var(--line);border-radius:999px;font-size:11px}
     .risk{background:#fef2f2;color:#9f1d1d;border-color:#fecaca}
     .section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .section-actions{display:flex;gap:8px;align-items:center}
     button.action{height:36px;border:none;border-radius:10px;padding:0 14px;font-weight:700;background:var(--acc);color:#fff;cursor:pointer;box-shadow:0 8px 16px rgba(31,95,255,.3)}
     .detail-row{background:#fafcff}
+    .detail-hidden{display:none}
     .product-paint{font-weight:700;font-size:13px}
     .product-red{color:#b91c1c}
     .product-purple{color:var(--purple)}
@@ -67,6 +70,11 @@
       .card{padding:12px;border-radius:12px}
       h1{font-size:20px}
       .table-wrap{max-height:none;overflow:visible}
+    }
+    @media print{
+      #resumen-view{display:none !important}
+      #detalle-view{display:block !important}
+      .detail-hidden{display:table-row !important}
     }
   </style>
   <script src="./data/clientes_canonico.js"></script>
@@ -186,8 +194,31 @@
       evolShowZeroZero:false,
       isMobile:false,
       mobileQ:"",
-      mobileExpanded:new Set()
+      mobileExpanded:new Set(),
+      clientesSort:{ key:"actual", dir:"desc" },
+      printingPrevShowDetail:null,
+      printMode:false
     };
+    const STORAGE_KEY = "dashboard_ursula_detalle";
+
+    function loadStoredDetalleState(){
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed.clientesSort && typeof parsed.clientesSort.key === "string" && (parsed.clientesSort.dir === "asc" || parsed.clientesSort.dir === "desc")) {
+          state.clientesSort = parsed.clientesSort;
+        }
+      } catch (_) {}
+    }
+
+    function persistDetalleState(){
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          clientesSort: state.clientesSort
+        }));
+      } catch (_) {}
+    }
 
     function detectMobileMode(){
       const smallViewport = window.matchMedia("(max-width: 1024px)").matches;
@@ -271,6 +302,17 @@
       });
     }
 
+    function sortClientesRows(items){
+      const key = state.clientesSort.key;
+      const factor = state.clientesSort.dir === "asc" ? 1 : -1;
+      return [...items].sort((a,b) => {
+        const av = a[key] ?? "";
+        const bv = b[key] ?? "";
+        if (typeof av === "number" && typeof bv === "number") return (av - bv) * factor;
+        return String(av).localeCompare(String(bv), "es") * factor;
+      });
+    }
+
     function enrich(c, periods){
       const actual = c.ventas[periods.current] || 0;
       const prev = c.ventas[periods.prev] || 0;
@@ -278,9 +320,10 @@
       const seg = actual > 1000 ? ">1000" : "<=1000";
       const activo = actual > 0;
       const nuevo = actual > 0 && prev === 0;
+      const estado = activo ? (nuevo ? "nuevo" : "activo") : "sin consumo";
       const riesgo = (prev > 0 && ((actual - prev) / prev) <= -0.30) || (prev > 1000 && actual <= 1000 && actual > 0);
       return {
-        ...c, actual, prev, yoy, seg, activo, nuevo, riesgo,
+        ...c, actual, prev, yoy, seg, activo, nuevo, estado, riesgo,
         dPrev: actual - prev, dYoy: actual - yoy, dYoyPct: yoy > 0 ? (actual - yoy) / yoy : null
       };
     }
@@ -313,6 +356,11 @@
     function sortEvolIndicator(key){
       if (state.evolSort.key !== key) return "";
       return state.evolSort.dir === "asc" ? " ↑" : " ↓";
+    }
+
+    function sortClientesIndicator(key){
+      if (state.clientesSort.key !== key) return "";
+      return state.clientesSort.dir === "asc" ? " ↑" : " ↓";
     }
 
     function render(){
@@ -365,16 +413,16 @@
         .filter(r => !upCodes.has(r.codigo_cliente))
         .slice(0,10);
       document.getElementById("tops").innerHTML = `
-        <thead><tr><th>Movimiento</th><th>Codigo</th><th>Cliente</th><th>Venta ${currentLabel}</th><th>vs ${prevLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}</tr></thead>
+        <thead><tr><th>Movimiento</th><th>Codigo</th><th>Cliente</th><th>Venta ${currentLabel}</th><th>Venta ${prevLabel}</th>${periods.yoy ? `<th>Venta ${yoyLabel}</th>` : ""}</tr></thead>
         <tbody>
-          ${up.map(r=>`<tr><td>${movementArrow(r.dPrev)}</td><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td class="${cls(r.dPrev)}">${eur(r.dPrev)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)}</td>` : ""}</tr>`).join("")}
-          ${down.map(r=>`<tr><td>${movementArrow(r.dPrev)}</td><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td class="${cls(r.dPrev)}">${eur(r.dPrev)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)}</td>` : ""}</tr>`).join("")}
+          ${up.map(r=>`<tr><td>${movementArrow(r.dPrev)}</td><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td>${eur(r.prev)}</td>${periods.yoy ? `<td>${eur(r.yoy)}</td>` : ""}</tr>`).join("")}
+          ${down.map(r=>`<tr><td>${movementArrow(r.dPrev)}</td><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td>${eur(r.prev)}</td>${periods.yoy ? `<td>${eur(r.yoy)}</td>` : ""}</tr>`).join("")}
         </tbody>`;
 
       const riskRows = rows.filter(r=>r.riesgo).sort((a,b)=>a.dPrev-b.dPrev).slice(0,80);
       document.getElementById("riesgo").innerHTML = `
-        <thead><tr><th>Codigo</th><th>Cliente</th><th>Venta ${currentLabel}</th><th>vs ${prevLabel}</th></tr></thead>
-        <tbody>${riskRows.length ? riskRows.map(r=>`<tr><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td class="${cls(r.dPrev)}">${eur(r.dPrev)}</td></tr>`).join("") : '<tr><td colspan="4">Sin clientes en riesgo.</td></tr>'}</tbody>`;
+        <thead><tr><th>Codigo</th><th>Cliente</th><th>Venta ${currentLabel}</th><th>Venta ${prevLabel}</th></tr></thead>
+        <tbody>${riskRows.length ? riskRows.map(r=>`<tr><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${eur(r.actual)}</td><td>${eur(r.prev)}</td></tr>`).join("") : '<tr><td colspan="4">Sin clientes en riesgo.</td></tr>'}</tbody>`;
 
       let evolRows = [...rows];
       if (!state.evolShowZeroZero) evolRows = evolRows.filter(r => !(r.actual === 0 && r.yoy === 0));
@@ -400,14 +448,24 @@
         </tbody>`;
 
       document.getElementById("toggle-all").textContent = state.showDetail ? "Ocultar detalle" : "Ver detalle";
+      let clientesRows = [...rows];
+      clientesRows = sortClientesRows(clientesRows);
       document.getElementById("clientes").innerHTML = `
-        <thead><tr><th>Codigo</th><th>Nombre</th><th>Grupo</th><th>Venta ${currentLabel}</th>${periods.yoy ? `<th>vs ${yoyLabel}</th>` : ""}<th>Estado</th></tr></thead>
+        <thead><tr>
+          <th class="th-sort" onclick="window.sortClientesBy('codigo_cliente')">Codigo${sortClientesIndicator("codigo_cliente")}</th>
+          <th class="th-sort" onclick="window.sortClientesBy('nombre_cliente')">Nombre${sortClientesIndicator("nombre_cliente")}</th>
+          <th class="th-sort" onclick="window.sortClientesBy('grupo_cliente')">Grupo${sortClientesIndicator("grupo_cliente")}</th>
+          <th class="th-sort" onclick="window.sortClientesBy('actual')">Venta ${currentLabel}${sortClientesIndicator("actual")}</th>
+          ${periods.yoy ? `<th class="th-sort" onclick="window.sortClientesBy('yoy')">Venta ${yoyLabel}${sortClientesIndicator("yoy")}</th>` : ""}
+          <th class="th-sort" onclick="window.sortClientesBy('estado')">Estado${sortClientesIndicator("estado")}</th>
+        </tr></thead>
         <tbody>
-          ${rows.map(r => {
-            const estado = r.activo ? (r.nuevo ? "nuevo" : "activo") : "sin consumo";
+          ${clientesRows.map(r => {
             const detailRows = sortProducts(r.consumos_1t26 || []);
-            const detalle = state.showDetail ? `
-              <tr class="detail-row"><td colspan="${periods.yoy ? 6 : 5}">
+            const rowClass = periods.yoy ? (r.dYoy > 0 ? "row-better" : r.dYoy < 0 ? "row-worse" : "row-neutral") : "";
+            const detalleClass = (!state.showDetail && !state.printMode) ? "detail-hidden" : "";
+            const detalle = `
+              <tr class="detail-row ${detalleClass}"><td colspan="${periods.yoy ? 6 : 5}">
                 <div class="mini" style="margin-bottom:6px">Detalle consumo ${currentLabel} (${detailRows.length} lineas)</div>
                 <table>
                   <thead>
@@ -420,9 +478,9 @@
                   </thead>
                   <tbody>${detailRows.length ? detailRows.map(p=>`<tr class="${productClass(p.codigo_producto)}"><td>${p.codigo_producto}</td><td>${p.cantidad ?? 0}</td><td>${p.descripcion}</td><td>${eur(p.importe)}</td></tr>`).join("") : '<tr><td colspan="4">Sin detalle de lineas en origen.</td></tr>'}</tbody>
                 </table>
-              </td></tr>` : "";
-            return `<tr><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${r.grupo_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}">${eur(r.dYoy)} (${pct(r.dYoyPct)})</td>` : ""}<td>${estado}</td></tr>${detalle}`;
-          }).join("")}
+              </td></tr>`;
+            return `<tr class="${rowClass}"><td>${r.codigo_cliente}</td><td>${r.nombre_cliente}</td><td>${r.grupo_cliente}</td><td>${eur(r.actual)}</td>${periods.yoy ? `<td class="${cls(r.dYoy)}"><b>${eur(r.yoy)}</b></td>` : ""}<td class="${periods.yoy ? cls(r.dYoy) : ""}">${r.estado}</td></tr>${detalle}`;
+          }).join("") || `<tr><td colspan="${periods.yoy ? 6 : 5}">Sin clientes para el filtro del listado.</td></tr>`}
         </tbody>`;
 
       const mobileRows = data.map(c => enrich(c, periods))
@@ -506,6 +564,17 @@
       render();
     };
 
+    window.sortClientesBy = function(key){
+      if (state.clientesSort.key === key) {
+        state.clientesSort.dir = state.clientesSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        state.clientesSort.key = key;
+        state.clientesSort.dir = (key === "actual" || key === "yoy") ? "desc" : "asc";
+      }
+      persistDetalleState();
+      render();
+    };
+
     function applyMobileMode(){
       state.isMobile = detectMobileMode();
       document.body.classList.toggle("mobile-mode", state.isMobile);
@@ -523,6 +592,31 @@
       render();
     });
     document.getElementById("toggle-all").addEventListener("click", () => { state.showDetail = !state.showDetail; render(); });
+    const detalleHeader = document.querySelector("#detalle-view .desktop-only .section-title");
+    if (detalleHeader) {
+      const sectionActions = document.createElement("div");
+      sectionActions.className = "section-actions";
+      const printDetailBtn = document.createElement("button");
+      printDetailBtn.id = "print-detalle";
+      printDetailBtn.className = "action";
+      printDetailBtn.type = "button";
+      printDetailBtn.textContent = "Imprimir detalle";
+      printDetailBtn.addEventListener("click", () => {
+        setView("detalle");
+        state.printingPrevShowDetail = state.showDetail;
+        state.printMode = true;
+        state.showDetail = true;
+        render();
+        setTimeout(() => window.print(), 80);
+      });
+      const toggleBtn = document.getElementById("toggle-all");
+      if (toggleBtn) {
+        toggleBtn.parentNode && toggleBtn.parentNode.removeChild(toggleBtn);
+        sectionActions.appendChild(printDetailBtn);
+        sectionActions.appendChild(toggleBtn);
+      }
+      detalleHeader.appendChild(sectionActions);
+    }
     document.getElementById("evol-filter").addEventListener("change", (e) => { state.evolFilter = e.target.value; render(); });
     document.getElementById("evol-show-zerozero").addEventListener("change", (e) => { state.evolShowZeroZero = e.target.checked; render(); });
     document.getElementById("tab-resumen").addEventListener("click", () => setView("resumen"));
@@ -542,9 +636,26 @@
       }
     });
 
+    window.addEventListener("beforeprint", () => {
+      setView("detalle");
+      state.printingPrevShowDetail = state.showDetail;
+      state.printMode = true;
+      state.showDetail = true;
+      render();
+    });
+    window.addEventListener("afterprint", () => {
+      state.printMode = false;
+      if (state.printingPrevShowDetail !== null) {
+        state.showDetail = state.printingPrevShowDetail;
+        state.printingPrevShowDetail = null;
+        render();
+      }
+    });
+
     applyMobileMode();
     window.addEventListener("resize", applyMobileMode);
     window.addEventListener("orientationchange", applyMobileMode);
+    loadStoredDetalleState();
     setView(state.isMobile ? "detalle" : "resumen");
     render();
   </script>
